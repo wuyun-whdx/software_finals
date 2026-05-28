@@ -14,3 +14,9 @@ infra/mysql-data/
 infra/redis-data/
 frontend/npm-cache*/
 frontend/pnpm-store*/
+
+# wrangler files
+.wrangler
+.dev.vars*
+!.dev.vars.example
+!.env.example
