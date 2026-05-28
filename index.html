@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ReflectStars | Developer & Researcher</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #0d1117; color: #c9d1d9; line-height: 1.6; margin: 0; padding: 0; }
+        header { padding: 4rem 2rem; text-align: center; border-bottom: 1px solid #30363d; }
+        h1 { color: #58a6ff; font-size: 2.5rem; margin-bottom: 0.5rem; }
+        .container { max-width: 800px; margin: 0 auto; padding: 2rem; }
+        .card { background-color: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 1.5rem; margin-bottom: 1.5rem; transition: transform 0.2s; }
+        .card:hover { transform: translateY(-5px); border-color: #8b949e; }
+        h2 { color: #ffffff; border-bottom: 2px solid #238636; padding-bottom: 0.5rem; display: inline-block; }
+        h3 { color: #58a6ff; margin-top: 0; }
+        .tag { background-color: #238636; color: white; padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.8rem; margin-right: 0.5rem; }
+        .btn-group { display: flex; flex-wrap: wrap; gap: 0.75rem; margin-top: 1rem; }
+        .btn { display: inline-block; background-color: #238636; color: white; text-decoration: none; padding: 0.5rem 1rem; border-radius: 6px; font-weight: bold; }
+        .btn:hover { background-color: #2ea043; }
+        .hero-actions { justify-content: center; margin-top: 1.5rem; }
+        .btn-large { padding: 0.75rem 1.25rem; }
+        .btn-secondary { background-color: #21262d; border: 1px solid #30363d; }
+        .btn-secondary:hover { background-color: #30363d; }
+        .download-tip { color: #8b949e; font-size: 0.92rem; margin-top: 0.75rem; }
+        .feature-list { margin: 0.75rem 0 0; padding-left: 1.1rem; color: #c9d1d9; }
+        .feature-list li { margin: 0.35rem 0; }
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>ReflectStars.dev</h1>
+    <p>Building tools for efficiency, exploring algorithms for the future.</p>
+    <div class="btn-group hero-actions">
+        <a href="https://app.reflectstars.dev" class="btn btn-large">进入性格雷达系统</a>
+        <a href="/app" class="btn btn-secondary btn-large">通过 /app 访问</a>
+    </div>
+</header>
+
+<div class="container">
+    <h2>Apps & Tools</h2>
+    <div class="card" id="personality-radar">
+        <h3>性格雷达·生活指南</h3>
+        <span class="tag">Vue 3</span> <span class="tag">Spring Boot</span> <span class="tag">MySQL</span> <span class="tag">Cloudflare Tunnel</span>
+        <p>面向个性化生活建议的完整前后端系统，通过性格测试、偏好答题和规则推荐，把用户画像转化为餐饮、旅行、穿搭与生涯规划建议。</p>
+        <ul class="feature-list">
+            <li>注册登录与 JWT 权限控制：区分普通用户与管理员，保护后台管理能力。</li>
+            <li>性格与偏好测试：内置基础性格、饮食偏好、旅游偏好题库，自动计算五维画像分数。</li>
+            <li>雷达图画像报告：展示开放性、尽责性、外向性、宜人性、神经质等维度，并生成文字解析。</li>
+            <li>场景化推荐与反馈优化：根据用户画像和反馈权重，动态调整餐饮、旅行、穿搭、生涯推荐排序。</li>
+            <li>双人适配与分享：支持通过好友手机号生成适配报告，并创建只读分享链接。</li>
+        </ul>
+        <div class="btn-group">
+            <a href="https://app.reflectstars.dev" class="btn">立即访问在线系统</a>
+            <a href="/app" class="btn btn-secondary">访问 /app 跳转入口</a>
+        </div>
+        <p class="download-tip">提示：在线系统运行在本机临时服务与 Cloudflare Tunnel 上，演示时需要保持服务器端在线。</p>
+    </div>
+    <div class="card">
+        <h3>产品简介</h3>
+        <span class="tag">Time Management</span> <span class="tag">AI Planning</span> <span class="tag">Multi-platform</span>
+        <ul class="feature-list">
+            <li>四象限任务管理：按重要/紧急快速分流，优先做对的事。</li>
+            <li>24 小时时间轴：按天查看日程，减少遗漏与冲突。</li>
+            <li>日历与时间线视图：周/月与全天安排联动，计划更直观。</li>
+            <li>AI 智能规划：输入目标后自动生成可落地的任务建议。</li>
+            <li>本地提醒与跨端发布：支持 Android 与 Windows 安装使用。</li>
+        </ul>
+    </div>
+    <div class="card">
+        <h3>智能日程规划助手 (Android)</h3>
+        <span class="tag">Flutter</span> <span class="tag">Cross-platform</span>
+        <p>面向移动端的高效日程管理应用，提供四象限任务、日历/时间线视图与 AI 规划能力，适合快速记录与每日执行。</p>
+        <div class="btn-group">
+            <a href="https://ghfast.top/https://github.com/reflectstars111/tryplan/releases/download/smart_time_manager/SmartTimeManager-android-clean-slim.apk" class="btn" target="_blank" rel="noopener noreferrer">🚀 国内加速下载 (v1.0.0)</a>
+            <a href="https://github.com/reflectstars111/tryplan/releases/download/smart_time_manager/SmartTimeManager-android-clean-slim.apk" class="btn btn-secondary" target="_blank" rel="noopener noreferrer">GitHub 官方下载</a>
+            <a href="https://github.com/reflectstars111/tryplan/releases" class="btn btn-secondary" target="_blank" rel="noopener noreferrer">Release Notes</a>
+        </div>
+    </div>
+    <div class="card">
+        <h3>智能日程规划助手 (Windows)</h3>
+        <span class="tag">Flutter</span> <span class="tag">Windows</span>
+        <p>Windows 桌面版安装包（单文件安装向导 .exe），适合在办公场景下长期使用与管理全天任务。</p>
+        <div class="btn-group">
+            <a href="https://ghfast.top/https://github.com/reflectstars111/tryplan/releases/download/smart_time_manager/SmartTimeManager-Setup-1.0.0.exe" class="btn" target="_blank" rel="noopener noreferrer">🚀 国内加速下载 (v1.0.0)</a>
+            <a href="https://github.com/reflectstars111/tryplan/releases/download/smart_time_manager/SmartTimeManager-Setup-1.0.0.exe" class="btn btn-secondary" target="_blank" rel="noopener noreferrer">GitHub 官方下载</a>
+            <a href="https://github.com/reflectstars111/tryplan/releases" class="btn btn-secondary" target="_blank" rel="noopener noreferrer">Release Notes</a>
+        </div>
+    </div>
+</div>
+
+<script>
+    if (window.location.pathname.replace(/\/+$/, '') === '/app') {
+        window.location.replace('https://app.reflectstars.dev')
+    }
+</script>
+</body>
+</html>
