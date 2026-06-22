@@ -36,7 +36,7 @@ async function load() {
   try { matches.value = await matchApi.list() } catch { /* skip */ }
   try { shares.value = await reportApi.shares() } catch { /* skip */ }
   try { feedbacks.value = await recommendationApi.myFeedback() } catch { /* skip */ }
-  try { invites.value = await matchApi.listInvites() } catch { /* skip */ }
+  try { invites.value = await matchApi.listInvites() } catch (e) { console.warn('invites 加载失败:', e) }
   loading.value = false
 }
 
