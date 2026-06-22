@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import EmptyState from '../components/common/EmptyState.vue'
 import LoadingState from '../components/common/LoadingState.vue'
@@ -10,7 +10,12 @@ import { loadQuestions, submitTest } from '../services/testService'
 const route = useRoute()
 const router = useRouter()
 const questionsByType = ref<Record<string, Question[]>>({})
-const answers = ref<Record<number, number>>({})
+const answers = ref<Record<string, number>>({})
+
+/** 用 "type:id" 组合键避免跨模块题目 ID 冲突 */
+function answerKey(q: { type: string; id: number }) {
+  return `${q.type}:${q.id}`
+}
 const currentIndex = ref(0)
 const loading = ref(true)
 const submitting = ref(false)
@@ -24,7 +29,7 @@ const allQuestions = computed(() =>
   })
 )
 const currentQuestion = computed(() => allQuestions.value[currentIndex.value] || null)
-const answeredCount = computed(() => allQuestions.value.filter((q) => answers.value[q.id]).length)
+const answeredCount = computed(() => allQuestions.value.filter((q) => answers.value[answerKey(q)]).length)
 const totalProgress = computed(() =>
   allQuestions.value.length ? Math.round((answeredCount.value / allQuestions.value.length) * 100) : 0
 )
@@ -41,7 +46,7 @@ function jumpToType(type: string) {
 function next() {
   error.value = ''
   if (!currentQuestion.value) return
-  if (!answers.value[currentQuestion.value.id]) {
+  if (!answers.value[answerKey(currentQuestion.value)]) {
     error.value = '请先回答当前题目，再进入下一题。'
     return
   }
@@ -68,9 +73,9 @@ async function submit() {
     for (const type of moduleKeys) {
       const typeQuestions = questionsByType.value[type] || []
       const typeAnswers = typeQuestions
-        .filter((q) => answers.value[q.id])
+        .filter((q) => answers.value[answerKey(q)])
         .map((q) => {
-          const opt = q.options.find((o) => o.label === String(answers.value[q.id]))
+          const opt = q.options.find((o) => o.label === String(answers.value[answerKey(q)]))
           return { questionId: q.id, optionIds: opt ? [opt.id] : [] }
         })
       if (typeAnswers.length > 0) {
@@ -100,14 +105,52 @@ async function load() {
 }
 
 watch(() => route.params.type, (value) => jumpToType((value as string) || 'personality'))
-onMounted(load)
+
+function handleKeydown(e: KeyboardEvent) {
+  if (loading.value || submitting.value || !currentQuestion.value) return
+  // 仅在真正需要文字输入时忽略按键（radio/checkbox 不拦截）
+  const el = e.target as HTMLElement
+  const tag = el?.tagName
+  if (
+    tag === 'TEXTAREA' ||
+    tag === 'SELECT' ||
+    (tag === 'INPUT' && (el as HTMLInputElement).type !== 'radio' && (el as HTMLInputElement).type !== 'checkbox')
+  )
+    return
+
+  const key = e.key
+  if (key >= '1' && key <= '5') {
+    e.preventDefault()
+    answers.value[answerKey(currentQuestion.value)] = Number(key)
+    error.value = ''
+  } else if (key === 'Enter') {
+    e.preventDefault()
+    if (!answers.value[answerKey(currentQuestion.value)]) {
+      error.value = '请先回答当前题目，再进入下一题。'
+      return
+    }
+    if (currentIndex.value < allQuestions.value.length - 1) {
+      next()
+    } else {
+      submit()
+    }
+  }
+}
+
+onMounted(() => {
+  load()
+  window.addEventListener('keydown', handleKeydown)
+})
+onUnmounted(() => {
+  window.removeEventListener('keydown', handleKeydown)
+})
 </script>
 
 <template>
   <PageContainer
     eyebrow="测试中心"
     title="完成四类测评，生成你的生活画像"
-    description="请按真实感受选择 1-5 级量表。所有测试结果由后端计算并持久化。"
+    description="请按真实感受选择 1-5 级量表（可按键盘 1-5 数字键快速选择）。所有测试结果由后端计算并持久化。"
   >
     <template #actions>
       <span class="progress-label">总进度 {{ totalProgress }}%</span>
@@ -147,8 +190,8 @@ onMounted(load)
         </div>
         <h2>{{ currentQuestion.content }}</h2>
         <div class="scale-grid">
-          <label v-for="n in 5" :key="n" :class="{ selected: answers[currentQuestion.id] === n }">
-            <input v-model="answers[currentQuestion.id]" type="radio" :name="String(currentQuestion.id)" :value="n" />
+          <label v-for="n in 5" :key="n" :class="{ selected: answers[answerKey(currentQuestion)] === n }">
+            <input v-model="answers[answerKey(currentQuestion)]" type="radio" :name="answerKey(currentQuestion)" :value="n" />
             <span>{{ n }}</span>
             <strong>{{ ['非常不同意','不太同意','一般','比较同意','非常同意'][n-1] }}</strong>
           </label>
