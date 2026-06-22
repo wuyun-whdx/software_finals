@@ -1,4 +1,4 @@
-package com.personality.radar.service;
+﻿package com.personality.radar.service;
 
 import com.personality.radar.common.BusinessException;
 import com.personality.radar.domain.Feedback;
@@ -17,6 +17,7 @@ import com.personality.radar.repository.RecommendationItemRepository;
 import com.personality.radar.repository.RecommendationRuleRepository;
 import com.personality.radar.repository.TestResultRepository;
 import com.personality.radar.repository.UserPreferenceRepository;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
@@ -32,22 +33,33 @@ public class RecommendationService {
     private final FeedbackRepository feedbacks;
     private final UserPreferenceRepository preferences;
     private final RecommendationRuleRepository rules;
+    private final AiRecommendationService aiRecommendationService;
 
     public RecommendationService(
             RecommendationItemRepository items,
             TestResultRepository results,
             FeedbackRepository feedbacks,
             UserPreferenceRepository preferences,
-            RecommendationRuleRepository rules) {
+            RecommendationRuleRepository rules,
+            AiRecommendationService aiRecommendationService) {
         this.items = items;
         this.results = results;
         this.feedbacks = feedbacks;
         this.preferences = preferences;
         this.rules = rules;
+        this.aiRecommendationService = aiRecommendationService;
     }
 
     @Transactional(readOnly = true)
     public List<ApiDtos.RecommendationResponse> recommend(UserAccount user, String sceneValue) {
+        return recommendWithRegion(user, sceneValue, null, null, null);
+    }
+
+    @Transactional(readOnly = true)
+    public List<ApiDtos.RecommendationResponse> recommendWithRegion(
+            UserAccount user, String sceneValue,
+            String province, String city, String district) {
+
         SceneType scene = EnumParser.sceneType(sceneValue);
         Map<String, Integer> mergedScores = mergedLatestScores(user);
         Map<String, Integer> preferenceMap = preferences.findByUser(user).stream()
@@ -55,12 +67,30 @@ public class RecommendationService {
         Map<String, Integer> ruleMap = rules.findByActiveTrueOrderByTagAsc().stream()
                 .collect(Collectors.toMap(RecommendationRule::getTag, RecommendationRule::getWeight));
 
-        return items.findBySceneAndActiveTrue(scene).stream()
+        List<ApiDtos.RecommendationResponse> general = items.findBySceneAndActiveTrue(scene).stream()
                 .map(item -> DtoMapper.recommendation(item,
                         RecommendationRanker.score(item.getBaseScore(), item.getTags(), preferenceMap, mergedScores, ruleMap)))
                 .sorted(Comparator.comparing(ApiDtos.RecommendationResponse::score).reversed())
                 .limit(10)
-                .toList();
+                .collect(Collectors.toCollection(ArrayList::new));
+
+        if (province != null && !province.isBlank() && city != null && !city.isBlank()) {
+            try {
+                List<ApiDtos.LocationRecommendationResponse> ai = aiRecommendationService.recommend(
+                        user, scene, province, city, district);
+                List<ApiDtos.RecommendationResponse> merged = new ArrayList<>();
+                for (ApiDtos.LocationRecommendationResponse r : ai) {
+                    merged.add(new ApiDtos.RecommendationResponse(
+                            r.id(), r.scene(), r.title(), r.description(), r.tags(),
+                            r.score(), r.baseScore(), r.active()));
+                }
+                merged.addAll(general);
+                return merged.stream().limit(15).toList();
+            } catch (Exception e) {
+                // AI failure, fall through to general
+            }
+        }
+        return general;
     }
 
     @Transactional
@@ -103,6 +133,10 @@ public class RecommendationService {
                         f.getComment(),
                         f.getCreatedAt()))
                 .toList();
+    }
+
+    public Map<String, Integer> getMergedScores(UserAccount user) {
+        return mergedLatestScores(user);
     }
 
     private Map<String, Integer> mergedLatestScores(UserAccount user) {
