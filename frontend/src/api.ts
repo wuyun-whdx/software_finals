@@ -4,6 +4,7 @@ import type {
   AdminStats,
   AdminUser,
   ApiResponse,
+  AiRecommendationResponse,
   AuthResponse,
   MatchInvite,
   MatchReport,
@@ -79,6 +80,14 @@ export const recommendationApi = {
   myFeedback: () => dataOf<UserFeedback[]>(api.get('/recommendations/feedback/me'))
 }
 
+
+export const aiRecommendationApi = {
+  recommend: (params: { scene?: string; lat?: number; lng?: number; city?: string; limit?: number }) =>
+    dataOf<AiRecommendationResponse>(api.get('/recommendations/ai', { params })),
+  feedback: (recordId: number, payload: { rating: string; comment?: string; itemName?: string }) =>
+    dataOf<void>(api.post(`/recommendations/ai/${recordId}/feedback`, payload)),
+  history: () => dataOf<unknown[]>(api.get('/recommendations/ai/history'))
+}
 export const matchApi = {
   create: (friendPhone: string) => dataOf<MatchReport>(api.post('/matches', { friendPhone })),
   list: () => dataOf<MatchReport[]>(api.get('/matches')),

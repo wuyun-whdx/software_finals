@@ -73,6 +73,28 @@ export interface Recommendation {
   active?: boolean
 }
 
+export interface AiRecommendationItem {
+  name: string
+  category?: string
+  address?: string
+  distanceMeters?: number
+  rating?: number
+  priceLevel?: string
+  matchScore: number
+  reason?: string
+  tags?: string[]
+  mapUrl?: string
+}
+
+export interface AiRecommendationResponse {
+  recordId: number
+  scene: string
+  source: string
+  degraded: boolean
+  city?: string
+  generatedAt: string
+  items: AiRecommendationItem[]
+}
 export interface MatchReport {
   id: number
   owner: UserProfile

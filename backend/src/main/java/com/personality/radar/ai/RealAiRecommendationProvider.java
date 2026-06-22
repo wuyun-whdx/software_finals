@@ -9,6 +9,7 @@ import com.personality.radar.domain.PersonalityDimension;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -17,17 +18,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
-/**
- * 把 C 上传的两个客户端（MapClient + DeepSeekClient）包成 B 约定的 {@link AiRecommendationProvider}。
- *
- * 它补上了 C 那版缺失的两件事：
- *   1) 个性化——把用户 10 维画像写进 Prompt（C 的入口只有经纬度，完全没用画像）；
- *   2) 输出形状——按 B↔C 契约返回 {@link AiRecoItem}（含 matchScore / reason / mapUrl）。
- * 防幻觉过滤沿用 C 的思路：只保留候选名单里真实存在的店。
- *
- * 只在 app.ai.provider=real 时生效；mock 模式下不创建本 bean，仍由 MockAiRecommendationProvider 顶替。
- * 失败一律抛异常，交给 B 的 AiRecommendationService 去降级到规则推荐。
- */
 @Component
 @ConditionalOnProperty(prefix = "app.ai", name = "provider", havingValue = "real")
 public class RealAiRecommendationProvider implements AiRecommendationProvider {
@@ -45,29 +35,35 @@ public class RealAiRecommendationProvider implements AiRecommendationProvider {
 
     @Override
     public List<AiRecoItem> recommend(AiRecoContext context) {
-        if (context.lat() == null || context.lng() == null) {
-            // C 的地图客户端是基于经纬度的；没有坐标就让上层降级
-            throw new IllegalStateException("缺少经纬度，real provider 无法调用地图");
+        Double lat = context.lat();
+        Double lng = context.lng();
+        if ((lat == null || lng == null) && context.city() != null && !context.city().isBlank()) {
+            double[] resolved = mapClient.geocodeCity(context.city().trim());
+            lat = resolved[0];
+            lng = resolved[1];
+        }
+        if (lat == null || lng == null) {
+            throw new IllegalStateException("缺少经纬度或城市，real provider 无法调用地图");
         }
 
-        // 1) C 的地图客户端拉真实候选
-        List<RestaurantCandidate> candidates = mapClient.nearbyRestaurants(context.lat(), context.lng());
+        List<RestaurantCandidate> candidates = mapClient.nearbyRestaurants(lat, lng);
         if (candidates == null || candidates.isEmpty()) {
             throw new IllegalStateException("地图未返回任何候选餐厅");
         }
 
-        // 2) 带画像的 Prompt（这是相对 C 那版的关键增强）
-        String prompt = buildPrompt(context.profileScores(), candidates);
-
-        // 3) C 的大模型客户端
-        String raw = deepSeekClient.chat(prompt);
-
-        // 4) 解析 + 防幻觉过滤
-        List<AiRecoItem> ranked = parseAndFilter(raw, candidates, context.limit());
-        if (ranked.isEmpty()) {
-            throw new IllegalStateException("AI 结果解析后为空（可能格式不符或全部被幻觉过滤）");
+        try {
+            String prompt = buildPrompt(context.profileScores(), candidates, context.limit());
+            String raw = deepSeekClient.chat(prompt);
+            List<AiRecoItem> ranked = parseAndFilter(raw, candidates, context.limit());
+            if (!ranked.isEmpty()) {
+                return ranked;
+            }
+            log.warn("AI 输出没有可用餐厅，改用真实地图候选排序");
+        } catch (Exception e) {
+            log.warn("AI 排序失败，改用真实地图候选排序: {}", e.toString());
         }
-        return ranked;
+
+        return rankRealCandidates(context.profileScores(), candidates, context.limit());
     }
 
     @Override
@@ -75,58 +71,44 @@ public class RealAiRecommendationProvider implements AiRecommendationProvider {
         return "amap+deepseek";
     }
 
-    // ---------- Prompt ----------
-
-    private String buildPrompt(Map<String, Integer> scores, List<RestaurantCandidate> list) {
+    private String buildPrompt(Map<String, Integer> scores, List<RestaurantCandidate> list, int limit) {
+        int count = Math.min(Math.max(limit, 1), Math.min(list.size(), 8));
         StringBuilder sb = new StringBuilder();
-        sb.append("你是本地餐厅个性化推荐助手。请结合【用户画像】对【候选餐厅】排序，并给出简短推荐理由。\n\n");
-
-        sb.append("【用户画像】（0-100，越高越强）：\n");
-        sb.append(profileLine(scores, PersonalityDimension.FOOD_ADVENTURE, "饮食探索（高=爱尝新，低=偏好熟悉稳定）"));
-        sb.append(profileLine(scores, PersonalityDimension.FOOD_SOCIAL, "饮食社交（高=爱聚餐分享，低=偏好安静独食）"));
-        sb.append(profileLine(scores, PersonalityDimension.EXTRAVERSION, "外向性"));
-        sb.append(profileLine(scores, PersonalityDimension.OPENNESS, "开放性"));
-        sb.append("\n");
-
-        sb.append("【候选餐厅】（只能从这里面选，名字必须原样照抄）：\n");
-        for (int i = 0; i < list.size(); i++) {
+        sb.append("请从候选餐厅中选择最适合用户的 ").append(count).append(" 家，并按适合度排序。\n");
+        sb.append("只能选择候选列表里存在的餐厅，name 必须完全照抄。\n");
+        sb.append("输出必须是 JSON 对象，格式：{\"results\":[{\"name\":\"餐厅名\",\"score\":88,\"reason\":\"一句具体推荐理由\"}]}\n\n");
+        sb.append("用户画像：\n");
+        sb.append(profileLine(scores, PersonalityDimension.FOOD_ADVENTURE, "饮食探索"));
+        sb.append(profileLine(scores, PersonalityDimension.FOOD_SOCIAL, "饮食社交"));
+        sb.append(profileLine(scores, PersonalityDimension.EXTRAVERSION, "外向"));
+        sb.append(profileLine(scores, PersonalityDimension.OPENNESS, "开放"));
+        sb.append("\n候选餐厅：\n");
+        for (int i = 0; i < Math.min(list.size(), 12); i++) {
             RestaurantCandidate r = list.get(i);
             sb.append(i + 1).append(". ").append(r.getName())
-                    .append(" | ").append(r.getAddress())
-                    .append(" | 距离").append(r.getDistance()).append("m\n");
+                    .append(" | ").append(valueOrDash(r.getCategory()))
+                    .append(" | ").append(valueOrDash(r.getAddress()))
+                    .append(" | 距离").append(r.getDistance() == null ? "未知" : Math.round(r.getDistance()) + "m")
+                    .append(" | 评分").append(r.getRating() == null ? "未知" : r.getRating())
+                    .append(" | ").append(valueOrDash(r.getPriceLevel()))
+                    .append("\n");
         }
-
-        sb.append("""
-
-                你是 API 系统，只能输出 JSON，禁止任何解释、Markdown、```json 包裹或多余文字。
-                要求：
-                - 只能从候选餐厅里选，name 必须与候选列表中的名字完全一致；
-                - 按与用户画像的契合度从高到低排序；
-                - score 为 0-100 的契合度；reason 用一句话（不超过 40 字）说明为什么适合这个用户。
-
-                必须严格输出：
-                {"results":[{"name":"餐厅名","score":88,"reason":"推荐理由"}]}
-                """);
         return sb.toString();
     }
 
     private String profileLine(Map<String, Integer> scores, PersonalityDimension dim, String desc) {
-        int v = scores.getOrDefault(dim.name(), 50);
-        return "- " + desc + "：" + v + "\n";
+        int value = scores.getOrDefault(dim.name(), 50);
+        return "- " + desc + ": " + value + "/100\n";
     }
 
-    // ---------- 解析 + 过滤 ----------
-
     private List<AiRecoItem> parseAndFilter(String raw, List<RestaurantCandidate> candidates, int limit) {
-        String cleaned = raw == null ? "" : raw.trim();
-        if (cleaned.contains("```")) {
-            cleaned = cleaned.replace("```json", "").replace("```", "").trim();
-        }
+        String cleaned = extractJsonObject(raw == null ? "" : raw.trim());
 
-        // 候选按名字建索引，用于防幻觉过滤
         Map<String, RestaurantCandidate> byName = new LinkedHashMap<>();
         for (RestaurantCandidate c : candidates) {
-            byName.putIfAbsent(c.getName(), c);
+            if (c.getName() != null && !c.getName().isBlank()) {
+                byName.putIfAbsent(c.getName(), c);
+            }
         }
 
         List<AiRecoItem> result = new ArrayList<>();
@@ -139,23 +121,12 @@ public class RealAiRecommendationProvider implements AiRecommendationProvider {
             for (JsonNode node : results) {
                 String name = text(node, "name");
                 if (name == null || !byName.containsKey(name)) {
-                    continue; // 幻觉：候选里没有，丢弃
+                    continue;
                 }
-                RestaurantCandidate c = byName.get(name);
-                int score = clamp(node.has("score") ? node.get("score").asInt(60) : 60);
+                RestaurantCandidate candidate = byName.get(name);
+                int score = clamp(node.has("score") ? node.get("score").asInt(70) : 70);
                 String reason = text(node, "reason");
-                result.add(new AiRecoItem(
-                        c.getName(),
-                        null,                       // category：高德 v5 基础返回里没有，留空
-                        c.getAddress(),
-                        c.getDistance(),
-                        null,                       // rating：同上，C 的 MapClient 未取
-                        null,                       // priceLevel：同上
-                        score,
-                        reason,
-                        null,                       // tags：暂无
-                        buildMapUrl(c),
-                        c.getLocation()));          // externalId 用高德坐标，便于去重/排错
+                result.add(toRecoItem(candidate, score, usefulReason(candidate, reason)));
                 if (result.size() >= Math.max(1, limit)) {
                     break;
                 }
@@ -166,21 +137,116 @@ public class RealAiRecommendationProvider implements AiRecommendationProvider {
         return result;
     }
 
+    private List<AiRecoItem> rankRealCandidates(
+            Map<String, Integer> scores, List<RestaurantCandidate> candidates, int limit) {
+        int adventure = scores.getOrDefault(PersonalityDimension.FOOD_ADVENTURE.name(), 50);
+        int social = scores.getOrDefault(PersonalityDimension.FOOD_SOCIAL.name(), 50);
+        return candidates.stream()
+                .filter(c -> c.getName() != null && !c.getName().isBlank())
+                .sorted(Comparator.comparingDouble((RestaurantCandidate c) -> localScore(c, adventure, social)).reversed())
+                .limit(Math.max(1, limit))
+                .map(c -> toRecoItem(c, clamp((int) Math.round(localScore(c, adventure, social))), fallbackReason(c, adventure, social)))
+                .toList();
+    }
+
+    private double localScore(RestaurantCandidate c, int adventure, int social) {
+        double score = 68;
+        if (c.getRating() != null) {
+            score += Math.max(0, c.getRating() - 3.5) * 8;
+        }
+        if (c.getDistance() != null) {
+            score += Math.max(0, 5000 - c.getDistance()) / 500;
+        }
+        String category = c.getCategory() == null ? "" : c.getCategory();
+        if (adventure >= 60 && (category.contains("异国") || category.contains("西餐") || category.contains("日本") || category.contains("韩国") || category.contains("创意"))) {
+            score += 8;
+        }
+        if (social >= 60 && (category.contains("火锅") || category.contains("烧烤") || category.contains("酒吧") || category.contains("咖啡"))) {
+            score += 8;
+        }
+        return Math.min(score, 96);
+    }
+
+    private AiRecoItem toRecoItem(RestaurantCandidate c, int score, String reason) {
+        return new AiRecoItem(
+                c.getName(),
+                c.getCategory(),
+                c.getAddress(),
+                c.getDistance(),
+                c.getRating(),
+                c.getPriceLevel(),
+                score,
+                reason,
+                tagsFor(c),
+                buildMapUrl(c),
+                c.getLocation());
+    }
+
+    private String fallbackReason(RestaurantCandidate c, int adventure, int social) {
+        StringBuilder reason = new StringBuilder();
+        if (c.getDistance() != null) {
+            reason.append("距离约").append(Math.round(c.getDistance())).append("米，");
+        }
+        if (c.getRating() != null) {
+            reason.append("评分").append(c.getRating()).append("，");
+        }
+        if (adventure >= social) {
+            reason.append("适合想尝试不同口味的一餐。");
+        } else {
+            reason.append("适合和朋友轻松聚餐。");
+        }
+        return reason.toString();
+    }
+
+    private String usefulReason(RestaurantCandidate c, String aiReason) {
+        if (aiReason != null && !aiReason.isBlank()) {
+            return aiReason;
+        }
+        return fallbackReason(c, 50, 50);
+    }
+
+    private List<String> tagsFor(RestaurantCandidate c) {
+        List<String> tags = new ArrayList<>();
+        if (c.getDistance() != null && c.getDistance() <= 1000) {
+            tags.add("附近");
+        }
+        if (c.getRating() != null && c.getRating() >= 4.5) {
+            tags.add("高评分");
+        }
+        if (c.getPriceLevel() != null) {
+            tags.add(c.getPriceLevel());
+        }
+        return tags.isEmpty() ? null : tags;
+    }
+
+    private String extractJsonObject(String raw) {
+        String cleaned = raw.replace("```json", "").replace("```", "").trim();
+        int start = cleaned.indexOf('{');
+        int end = cleaned.lastIndexOf('}');
+        if (start >= 0 && end > start) {
+            return cleaned.substring(start, end + 1);
+        }
+        return cleaned;
+    }
+
     private String buildMapUrl(RestaurantCandidate c) {
         if (c.getLocation() == null || c.getLocation().isBlank()) {
             return null;
         }
-        // 高德 location 形如 "经度,纬度"，正好是 uri.amap.com 需要的 position 格式
         String name = c.getName() == null ? "" : URLEncoder.encode(c.getName(), StandardCharsets.UTF_8);
         return "https://uri.amap.com/marker?position=" + c.getLocation() + "&name=" + name;
     }
 
     private String text(JsonNode node, String field) {
-        JsonNode v = node.get(field);
-        return v == null || v.isNull() ? null : v.asText();
+        JsonNode value = node.get(field);
+        return value == null || value.isNull() ? null : value.asText();
     }
 
-    private int clamp(int v) {
-        return Math.max(0, Math.min(100, v));
+    private String valueOrDash(String value) {
+        return value == null || value.isBlank() ? "-" : value;
+    }
+
+    private int clamp(int value) {
+        return Math.max(0, Math.min(100, value));
     }
 }
