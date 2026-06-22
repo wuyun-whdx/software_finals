@@ -1,27 +1,21 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { onMounted, ref, watch } from 'vue'
 import EmptyState from '../components/common/EmptyState.vue'
 import LoadingState from '../components/common/LoadingState.vue'
 import PageContainer from '../components/common/PageContainer.vue'
-import type { Recommendation } from '../types'
+import RegionSelector from '../components/RegionSelector.vue'
+import type { LocationRecommendation, Recommendation, RegionInfo } from '../types'
 import { listRecommendations, submitFeedback } from '../services/recommendationService'
+import { getMyRegion } from '../services/regionService'
 
 const tabs: Array<{ value: string; label: string }> = [
-  { value: 'food', label: '餐饮' },
+  { value: 'food', label: '饮食' },
   { value: 'travel', label: '旅行' },
   { value: 'social', label: '社交' },
   { value: 'outfit', label: '穿搭' },
-  { value: 'career', label: '职业' },
+  { value: 'career', label: '生涯' },
   { value: 'community', label: '社区' }
 ]
-
-const sceneLabels: Record<string, string> = {
-  FOOD: '餐饮推荐',
-  TRAVEL: '旅行推荐',
-  SOCIAL: '社交推荐',
-  OUTFIT: '穿搭推荐',
-  CAREER: '职业推荐'
-}
 
 const active = ref('food')
 const items = ref<Recommendation[]>([])
@@ -29,6 +23,8 @@ const submitted = ref<Record<number, string>>({})
 const loading = ref(true)
 const error = ref('')
 const notice = ref('')
+const hasRegion = ref(false)
+const region = ref<RegionInfo | null>(null)
 
 function switchTab(tab: string) {
   if (tab === 'community') {
@@ -38,16 +34,37 @@ function switchTab(tab: string) {
   active.value = tab
 }
 
+function getSceneLabel(scene: string): string {
+  const labels: Record<string, string> = {
+    food: '饮食推荐', travel: '旅游推荐', social: '社交推荐',
+    outfit: '穿搭推荐', career: '生涯推荐'
+  }
+  return labels[scene] || scene
+}
+
 async function load() {
   loading.value = true
   error.value = ''
   try {
-    items.value = await listRecommendations(active.value)
+    items.value = await listRecommendations(active.value, region.value || undefined)
   } catch (err) {
     error.value = (err as Error).message || '推荐加载失败，请稍后重试。'
   } finally {
     loading.value = false
   }
+}
+
+async function loadRegion() {
+  try {
+    region.value = await getMyRegion()
+    hasRegion.value = !!region.value
+  } catch {
+    hasRegion.value = false
+  }
+}
+
+function onRegionChanged() {
+  loadRegion().then(() => load())
 }
 
 async function feedback(item: Recommendation, rating: string) {
@@ -63,16 +80,27 @@ async function feedback(item: Recommendation, rating: string) {
   }
 }
 
-function sceneLabel(scene: string) {
-  return sceneLabels[scene] || '生活推荐'
-}
-
 function feedbackLabel(rating: string) {
   return rating === 'LIKE' ? '喜欢' : rating === 'NEUTRAL' ? '一般' : '不喜欢'
 }
 
+function isAi(item: Recommendation): boolean {
+  return (item as LocationRecommendation).source === 'ai'
+}
+
+function getAddress(item: Recommendation): string | undefined {
+  return (item as LocationRecommendation).address
+}
+
+function getAiReason(item: Recommendation): string | undefined {
+  return (item as LocationRecommendation).aiReason
+}
+
 watch(active, load)
-onMounted(load)
+onMounted(() => {
+  loadRegion()
+  load()
+})
 </script>
 
 <template>
@@ -89,6 +117,8 @@ onMounted(load)
       </div>
     </template>
 
+    <RegionSelector @update:has-region="hasRegion = $event" @region-changed="onRegionChanged" />
+
     <div v-if="notice" class="notice">{{ notice }}</div>
     <div v-if="error" class="error">{{ error }}</div>
     <LoadingState v-if="loading" message="正在计算推荐排序..." />
@@ -97,7 +127,7 @@ onMounted(load)
       v-else-if="error.includes('请先完成')"
       title="请先完成基础性格测试"
       description="完成测评后，系统会根据你的画像、场景偏好和历史反馈给出推荐。"
-      action-label="去完成测试"
+      action-label="去完成测评"
       action-to="/tests/personality"
     />
 
@@ -108,15 +138,22 @@ onMounted(load)
     />
 
     <section v-else class="grid two">
-      <article v-for="item in items" :key="item.id" class="card recommendation-card">
+      <article
+        v-for="item in items"
+        :key="item.id"
+        class="card recommendation-card"
+        :class="{ 'ai-card': isAi(item) }"
+      >
         <div class="split">
           <div>
-            <p class="eyebrow">{{ sceneLabel(item.scene) }}</p>
+            <p class="eyebrow">{{ getSceneLabel(item.scene) }}</p>
             <h2>{{ item.title }}</h2>
           </div>
           <span class="score-pill" title="综合适配度">{{ item.score }}%</span>
         </div>
+        <p v-if="getAddress(item)" class="address-line">{{ getAddress(item) }}</p>
         <p>{{ item.description }}</p>
+        <p v-if="getAiReason(item)" class="ai-reason">{{ getAiReason(item) }}</p>
         <div class="tag-row">
           <span v-for="tag in item.tags" :key="tag">{{ tag }}</span>
         </div>
@@ -130,3 +167,34 @@ onMounted(load)
     </section>
   </PageContainer>
 </template>
+
+<style scoped>
+.ai-card {
+  border-left: 3px solid var(--signal, #f97316);
+  padding-left: calc(var(--card-padding, 1.25rem) - 3px);
+}
+
+.ai-card::before {
+  content: 'AI 精准推荐';
+  display: inline-block;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--signal, #f97316);
+  margin-bottom: 0.5rem;
+}
+
+.address-line {
+  font-size: 0.85rem;
+  color: var(--muted);
+  margin-bottom: 0.25rem;
+}
+
+.ai-reason {
+  font-size: 0.85rem;
+  color: var(--signal-dim, #92400e);
+  font-style: italic;
+  margin-top: 0.25rem;
+}
+</style>

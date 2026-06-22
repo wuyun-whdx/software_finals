@@ -1,4 +1,4 @@
-import axios from 'axios'
+﻿import axios from 'axios'
 import type {
   AdminDashboard,
   AdminStats,
@@ -8,6 +8,7 @@ import type {
   CommentResponse,
   CreateCommentRequest,
   CreatePostRequest,
+  LocationRecommendation,
   MatchInvite,
   MatchReport,
   PostListResponse,
@@ -15,9 +16,12 @@ import type {
   Question,
   Recommendation,
   RecommendationRule,
+  RegionInfo,
+  RegionRecord,
   Report,
   ReportSnapshot,
   ShareLinkSummary,
+  SimpleRegion,
   TestResult,
   UserFeedback,
   UserProfile
@@ -78,10 +82,22 @@ export const reportApi = {
 }
 
 export const recommendationApi = {
-  list: (scene: string) => dataOf<Recommendation[]>(api.get('/recommendations', { params: { scene } })),
+  list: (scene: string, region?: RegionInfo) =>
+    dataOf<Recommendation[]>(api.get('/recommendations', {
+      params: { scene, ...(region || {}) }
+    })),
   feedback: (id: number, payload: { rating: string; comment?: string }) =>
     dataOf<void>(api.post(`/recommendations/${id}/feedback`, payload)),
   myFeedback: () => dataOf<UserFeedback[]>(api.get('/recommendations/feedback/me'))
+}
+
+export const regionApi = {
+  provinces: () => dataOf<SimpleRegion[]>(api.get('/regions/provinces')),
+  cities: (provinceId: number) => dataOf<SimpleRegion[]>(api.get('/regions/cities', { params: { provinceId } })),
+  districts: (cityId: number) => dataOf<SimpleRegion[]>(api.get('/regions/districts', { params: { cityId } })),
+  getMyRegion: () => dataOf<RegionInfo | null>(api.get('/user/region')),
+  saveMyRegion: (payload: RegionInfo) => dataOf<RegionInfo>(api.post('/user/region', payload)),
+  history: () => dataOf<RegionRecord[]>(api.get('/user/region/history'))
 }
 
 export const matchApi = {

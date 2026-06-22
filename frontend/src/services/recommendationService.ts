@@ -1,8 +1,8 @@
-import { recommendationApi } from '../api'
-import type { Recommendation, UserFeedback } from '../types'
+﻿import { recommendationApi } from '../api'
+import type { Recommendation, RegionInfo, UserFeedback } from '../types'
 
-export async function listRecommendations(scene: string) {
-  return recommendationApi.list(scene) as Promise<Recommendation[]>
+export async function listRecommendations(scene: string, region?: RegionInfo) {
+  return recommendationApi.list(scene, region) as Promise<Recommendation[]>
 }
 
 export async function submitFeedback(id: number, rating: string, comment?: string) {

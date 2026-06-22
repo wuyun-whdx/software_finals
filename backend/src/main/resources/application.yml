@@ -1,4 +1,4 @@
-server:
+﻿server:
   port: ${SERVER_PORT:8080}
 
 spring:
@@ -27,6 +27,13 @@ app:
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173,http://127.0.0.1:5173}
   public-base-url: ${PUBLIC_BASE_URL:http://localhost:5173}
+  ai:
+    deepseek:
+      api-key: ${AI_API_KEY:}
+      base-url: ${AI_BASE_URL:https://api.deepseek.com}
+      model: ${AI_MODEL:deepseek-chat}
+      timeout-seconds: ${AI_TIMEOUT_SECONDS:8}
+      cache-ttl-hours: ${AI_CACHE_TTL_HOURS:24}
 
 management:
   health:

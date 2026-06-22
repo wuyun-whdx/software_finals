@@ -1,4 +1,4 @@
-export interface ApiResponse<T> {
+﻿export interface ApiResponse<T> {
   code: number
   message: string
   data: T
@@ -71,6 +71,31 @@ export interface Recommendation {
   score: number
   baseScore?: number
   active?: boolean
+}
+
+export interface LocationRecommendation extends Recommendation {
+  address?: string
+  aiReason?: string
+  source?: 'ai' | 'general'
+}
+
+export interface SimpleRegion {
+  id: number
+  name: string
+}
+
+export interface RegionInfo {
+  province: string
+  city: string
+  district?: string
+}
+
+export interface RegionRecord {
+  province: string
+  city: string
+  district: string
+  isCurrent: boolean
+  createdAt: string
 }
 
 export interface MatchReport {

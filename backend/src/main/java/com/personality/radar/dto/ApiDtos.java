@@ -1,4 +1,4 @@
-package com.personality.radar.dto;
+﻿package com.personality.radar.dto;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
@@ -75,6 +75,20 @@ public final class ApiDtos {
             int score,
             Integer baseScore,
             boolean active) {
+    }
+
+    public record LocationRecommendationResponse(
+            Long id,
+            String scene,
+            String title,
+            String description,
+            List<String> tags,
+            int score,
+            Integer baseScore,
+            boolean active,
+            String address,
+            String aiReason,
+            String source) {
     }
 
     public record FeedbackRequest(
@@ -249,4 +263,14 @@ public final class ApiDtos {
             UserProfileResponse user,
             Instant createdAt) {
     }
+
+    // === Region DTOs ===
+    public record SimpleRegion(Long id, String name) {}
+
+    public record RegionRequest(String province, String city, String district) {}
+
+    public record RegionResponse(String province, String city, String district) {}
+
+    public record RegionRecord(String province, String city, String district,
+                               boolean isCurrent, Instant createdAt) {}
 }
