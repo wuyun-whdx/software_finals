@@ -220,3 +220,47 @@ export interface RecommendationRule {
   weight: number
   active: boolean
 }
+
+// === Friend & Chat ===
+export interface FriendInvite {
+  code: string
+  createdAt: string
+  status: 'ACTIVE' | 'USED' | 'REVOKED'
+  expiresAt: string
+}
+
+export interface FriendRequestItem {
+  id: number
+  fromUser: UserProfile
+  toUser: UserProfile
+  status: 'PENDING' | 'ACCEPTED' | 'REJECTED' | 'BLOCKED'
+  message: string
+  createdAt: string
+}
+
+export interface OpenMatchStatus {
+  enabled: boolean
+  message: string
+}
+
+export interface OpenMatchRecommendation {
+  user: UserProfile
+  score: number
+  topDimensions: string[]
+}
+
+export interface ChatMessage {
+  id: number
+  sender: UserProfile
+  content: string
+  read: boolean
+  createdAt: string
+}
+
+export interface ChatConversation {
+  friend: UserProfile
+  lastMessage: string
+  lastMessageTime: string
+  unreadCount: number
+}
+

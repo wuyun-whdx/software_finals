@@ -273,4 +273,49 @@ public final class ApiDtos {
 
     public record RegionRecord(String province, String city, String district,
                                boolean isCurrent, Instant createdAt) {}
+
+    // === Friend DTOs ===
+    public record FriendInviteResponse(
+            String code,
+            Instant createdAt,
+            String status,
+            Instant expiresAt) {}
+
+    public record FriendByInviteRequest(@NotBlank String inviteCode) {}
+
+    public record FriendRequestSend(
+            @NotBlank @Pattern(regexp = "^\\d{11}$") String phone,
+            @Size(max = 50) String message) {}
+
+    public record FriendRequestResponse(
+            Long id,
+            UserProfileResponse fromUser,
+            UserProfileResponse toUser,
+            String status,
+            String message,
+            Instant createdAt) {}
+
+    // === Open Match DTOs ===
+    public record OpenMatchStatusResponse(boolean enabled, String message) {}
+
+    public record OpenMatchRecommendationResponse(
+            UserProfileResponse user,
+            double score,
+            List<String> topDimensions) {}
+
+    // === Chat DTOs ===
+    public record SendMessageRequest(@NotBlank @Size(min = 1, max = 500) String content) {}
+
+    public record ChatMessageResponse(
+            Long id,
+            UserProfileResponse sender,
+            String content,
+            boolean read,
+            Instant createdAt) {}
+
+    public record ChatConversationResponse(
+            UserProfileResponse friend,
+            String lastMessage,
+            Instant lastMessageTime,
+            long unreadCount) {}
 }

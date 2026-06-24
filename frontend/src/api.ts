@@ -5,12 +5,18 @@ import type {
   AdminUser,
   ApiResponse,
   AuthResponse,
+  ChatConversation,
+  ChatMessage,
   CommentResponse,
   CreateCommentRequest,
   CreatePostRequest,
+  FriendInvite,
+  FriendRequestItem,
   LocationRecommendation,
   MatchInvite,
   MatchReport,
+  OpenMatchRecommendation,
+  OpenMatchStatus,
   PostListResponse,
   PostResponse,
   Question,
@@ -154,4 +160,36 @@ export const postApi = {
     dataOf<CommentResponse[]>(api.get(`/posts/${postId}/comments`, { params: { page } })),
   deleteComment: (postId: number, commentId: number) =>
     dataOf<void>(api.delete(`/posts/${postId}/comments/${commentId}`))
+}
+
+export const friendApi = {
+  createInvite: () => dataOf<FriendInvite>(api.post('/friends/invite')),
+  listInvites: () => dataOf<FriendInvite[]>(api.get('/friends/invites')),
+  addByInvite: (inviteCode: string) => dataOf<FriendInvite>(api.post('/friends/by-invite', { inviteCode })),
+  sendRequest: (phone: string, message?: string) => dataOf<FriendRequestItem>(api.post('/friends/request', { phone, message })),
+  listFriends: () => dataOf<UserProfile[]>(api.get('/friends')),
+  listRequests: () => dataOf<FriendRequestItem[]>(api.get('/friends/requests')),
+  acceptRequest: (id: number) => dataOf<FriendRequestItem>(api.put(`/friends/requests/${id}/accept`)),
+  rejectRequest: (id: number) => dataOf<FriendRequestItem>(api.put(`/friends/requests/${id}/reject`)),
+  blockRequest: (id: number) => dataOf<FriendRequestItem>(api.put(`/friends/requests/${id}/block`)),
+  cancelRequest: (id: number) => dataOf<void>(api.delete(`/friends/requests/${id}`)),
+  deleteFriend: (friendId: number) => dataOf<void>(api.delete(`/friends/${friendId}`)),
+  blockFriend: (friendId: number) => dataOf<void>(api.put(`/friends/${friendId}/block`)),
+  unblockFriend: (friendId: number) => dataOf<void>(api.put(`/friends/${friendId}/unblock`)),
+  listBlocked: () => dataOf<UserProfile[]>(api.get('/friends/blocked')),
+  searchByPhone: (phone: string) => dataOf<UserProfile>(api.get('/friends/search', { params: { phone } }))
+}
+
+export const openMatchApi = {
+  toggle: () => dataOf<OpenMatchStatus>(api.post('/match/open/toggle')),
+  status: () => dataOf<OpenMatchStatus>(api.get('/match/open/status')),
+  recommendations: () => dataOf<OpenMatchRecommendation[]>(api.get('/match/open/recommendations'))
+}
+
+export const chatApi = {
+  sendMessage: (friendId: number, content: string) => dataOf<ChatMessage>(api.post(`/chat/messages/${friendId}`, { content })),
+  getMessages: (friendId: number, page = 0) => dataOf<ChatMessage[]>(api.get(`/chat/messages/${friendId}`, { params: { page } })),
+  getConversations: () => dataOf<ChatConversation[]>(api.get('/chat/conversations')),
+  markRead: (friendId: number) => dataOf<void>(api.put(`/chat/messages/${friendId}/read`)),
+  getUnreadCount: () => dataOf<number>(api.get('/chat/unread-count'))
 }
