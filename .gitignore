@@ -9,6 +9,7 @@ maven-repo/
 verify-classes/
 *.log
 *.pyc
+*.tsbuildinfo
 .env
 .DS_Store
 infra/mysql-data/

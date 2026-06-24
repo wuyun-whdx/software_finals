@@ -44,3 +44,10 @@ management:
     web:
       exposure:
         include: health,info
+
+ai:
+  amap:
+    key: ${AMAP_API_KEY:}
+
+  deepseek:
+    api-key: ${DEEPSEEK_API_KEY:}

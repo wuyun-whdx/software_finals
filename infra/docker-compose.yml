@@ -57,7 +57,7 @@ services:
       SPRING_JPA_HIBERNATE_DDL_AUTO: ${SPRING_JPA_HIBERNATE_DDL_AUTO:-update}
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-https://app.reflectstars.dev,https://reflectstars.dev,http://127.0.0.1:5173,http://localhost:5173}
       PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-https://app.reflectstars.dev}
-      AI_API_KEY: ${AI_API_KEY:-sk-b75f444540044ddb94c00f24d0e8916b}
+      AI_API_KEY: ${AI_API_KEY:-}
       AI_BASE_URL: ${AI_BASE_URL:-https://api.deepseek.com}
       AI_MODEL: ${AI_MODEL:-deepseek-chat}
     ports:

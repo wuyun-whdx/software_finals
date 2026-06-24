@@ -1,5 +1,6 @@
 package com.personality.radar.controller;
 
+import com.personality.radar.ai.client.DeepSeekClient;
 import com.personality.radar.common.ApiResponse;
 import com.personality.radar.dto.ApiDtos;
 import com.personality.radar.service.CurrentUserService;
