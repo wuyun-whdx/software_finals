@@ -36,6 +36,7 @@ powershell -ExecutionPolicy Bypass -File .\reactivate-default-users.ps1
 
 # 或手动分步启动
 cd infra
+copy .env.example .env
 docker compose up -d
 cd ../frontend
 npm install && npm run dev
@@ -63,6 +64,9 @@ npm install && npm run dev
 | `CORS_ALLOWED_ORIGINS` | `http://localhost:5173,...` | 允许的跨域来源 |
 | `PUBLIC_BASE_URL` | `http://localhost:5173` | 公网访问地址 |
 | `SPRING_JPA_HIBERNATE_DDL_AUTO` | `update` | 生产用 `validate` |
+| `AI_PROVIDER` | `mock` | 本地默认使用模拟推荐，接入外部服务时设为 `real` |
+| `AMAP_API_KEY` | 空 | 高德地图 API Key，`AI_PROVIDER=real` 时配置 |
+| `DEEPSEEK_API_KEY` | 空 | DeepSeek API Key，`AI_PROVIDER=real` 时配置 |
 
 ## 文档
 

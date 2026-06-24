@@ -42,7 +42,7 @@ management:
 
 ai:
   amap:
-    key: 0abda23de1bd7ddabbb4d35d846a0ca9
+    key: ${AMAP_API_KEY:}
 
   deepseek:
-    api-key: sk-d57fa5634bed43cbb3e4c97de606721b
+    api-key: ${DEEPSEEK_API_KEY:}
