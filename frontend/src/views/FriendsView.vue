@@ -289,6 +289,13 @@ onMounted(load)
 </template>
 
 <style scoped>
+.friend-list, .rec-list, .request-list, .tab-bar, .action-row {
+  /* 映射到全局设计系统变量 */
+  --accent: var(--blip);
+  --text: var(--ink);
+  --border: var(--line);
+  --bg: #f0eef6;
+}
 .tab-bar {
   display: flex;
   gap: 0;

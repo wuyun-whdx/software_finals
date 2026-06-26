@@ -182,6 +182,13 @@ onUnmounted(() => {
 
 <style scoped>
 .chat-page {
+  /* 映射到全局设计系统变量 */
+  --accent: var(--blip);
+  --bg: #f0eef6;
+  --text: var(--ink);
+  --border: var(--line);
+  --hover: var(--soft);
+
   display: flex;
   flex-direction: column;
   height: 100vh;

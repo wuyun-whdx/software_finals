@@ -28,8 +28,8 @@ const router = createRouter({
       children: [
         { path: '', component: MatchView },
         { path: 'friends', component: () => import('./views/FriendsView.vue') },
-        { path: 'chat', component: () => import('./views/ChatListView.vue') },
-        { path: 'chat/:friendId', component: () => import('./views/ChatDetailView.vue') }
+        { path: 'chat', component: () => import('./views/ChatView.vue') },
+        { path: 'chat/:friendId', component: () => import('./views/ChatView.vue') }
       ]
     },
     { path: '/profile', component: ProfileView, meta: { auth: true } },

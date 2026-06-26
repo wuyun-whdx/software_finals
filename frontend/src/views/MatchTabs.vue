@@ -31,6 +31,11 @@ function isActive(path: string) {
   min-height: 100vh;
 }
 .match-subnav {
+  /* 映射到全局设计系统变量 */
+  --accent: var(--blip);
+  --text: var(--ink);
+  --border: var(--line);
+
   display: flex;
   gap: 0;
   background: var(--surface);
@@ -39,6 +44,7 @@ function isActive(path: string) {
   position: sticky;
   top: 0;
   z-index: 10;
+  flex-shrink: 0;
 }
 .match-subnav a {
   padding: 12px 20px;

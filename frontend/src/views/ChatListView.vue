@@ -86,6 +86,10 @@ onUnmounted(() => {
 
 <style scoped>
 .conversation-list {
+  /* 映射到全局设计系统变量 */
+  --accent: var(--blip);
+  --hover: var(--soft);
+
   display: flex;
   flex-direction: column;
   gap: 2px;
