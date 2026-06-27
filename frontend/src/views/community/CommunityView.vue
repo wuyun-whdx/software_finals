@@ -7,8 +7,10 @@ import PageContainer from '../../components/common/PageContainer.vue'
 import PostCard from '../../components/community/PostCard.vue'
 import { postApi } from '../../api'
 import type { PostResponse } from '../../types'
+import { useAuthStore } from '../../stores/auth'
 
 const router = useRouter()
+const auth = useAuthStore()
 
 const sort = ref('recommend')
 const domain = ref('')
@@ -33,6 +35,19 @@ const tabs = [
 function switchTab(tab: string) {
   if (tab === 'community') return
   router.push({ path: '/recommendations', query: { tab } })
+}
+
+function canDelete(post: PostResponse): boolean {
+  return auth.isAdmin || post.author.id === auth.user?.id
+}
+
+async function handleDelete(id: number) {
+  try {
+    await postApi.delete(id)
+    posts.value = posts.value.filter(p => p.id !== id)
+  } catch (err) {
+    error.value = (err as Error).message || '删除失败'
+  }
 }
 
 async function load() {
@@ -105,6 +120,8 @@ onMounted(load)
         :compatibility="post.compatibility"
         :show-compatibility="post.showCompatibility"
         :created-at="post.createdAt"
+        :can-delete="canDelete(post)"
+        @delete="handleDelete"
       />
     </section>
   </PageContainer>

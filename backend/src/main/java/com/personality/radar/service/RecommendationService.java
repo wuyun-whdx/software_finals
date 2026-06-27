@@ -113,6 +113,29 @@ public class RecommendationService {
 
     @Transactional
     public void feedback(UserAccount user, Long itemId, ApiDtos.FeedbackRequest request) {
+        // AI items have negative IDs; accept feedback without persisting a DB record
+        if (itemId < 0) {
+            FeedbackRating rating = EnumParser.rating(request.rating());
+            int delta = switch (rating) {
+                case LIKE -> 3;
+                case NEUTRAL -> 1;
+                case DISLIKE -> -3;
+            };
+            if (request.tags() != null) {
+                for (String tag : request.tags()) {
+                    UserPreference preference = preferences.findByUserAndTag(user, tag).orElseGet(() -> {
+                        UserPreference created = new UserPreference();
+                        created.setUser(user);
+                        created.setTag(tag);
+                        return created;
+                    });
+                    preference.setWeight(Math.max(-30, Math.min(30, preference.getWeight() + delta)));
+                    preferences.save(preference);
+                }
+            }
+            return;
+        }
+
         RecommendationItem item = items.findById(itemId)
                 .orElseThrow(() -> new BusinessException(404, "推荐项不存在"));
         FeedbackRating rating = EnumParser.rating(request.rating());

@@ -4,10 +4,10 @@ import { useRouter } from 'vue-router'
 import EmptyState from '../components/common/EmptyState.vue'
 import LoadingState from '../components/common/LoadingState.vue'
 import PageContainer from '../components/common/PageContainer.vue'
-import type { TestResult, ReportSnapshot, MatchReport, ShareLinkSummary, MatchInvite, UserFeedback } from '../types'
+import type { TestResult, ReportSnapshot, MatchReport, ShareLinkSummary, MatchInvite, UserFeedback, MyCommentResponse, PostResponse } from '../types'
 import { revokeShare } from '../services/reportService'
 import { useAuthStore } from '../stores/auth'
-import { testApi, recommendationApi, matchApi, reportApi } from '../api'
+import { testApi, recommendationApi, matchApi, reportApi, postApi } from '../api'
 import { formatTime } from '../utils/format'
 import { getErrorMessage } from '../utils/errors'
 
@@ -19,9 +19,14 @@ const matches = ref<MatchReport[]>([])
 const shares = ref<ShareLinkSummary[]>([])
 const feedbacks = ref<UserFeedback[]>([])
 const invites = ref<MatchInvite[]>([])
+const myPosts = ref<PostResponse[]>([])
+const myComments = ref<MyCommentResponse[]>([])
 const notice = ref('')
 const error = ref('')
 const loading = ref(true)
+const editingPostId = ref<number | null>(null)
+const editingCommentId = ref<number | null>(null)
+const editText = ref('')
 
 function typeLabel(type: string) {
   const labels: Record<string, string> = {
@@ -40,6 +45,8 @@ async function load() {
   try { shares.value = await reportApi.shares() } catch { /* skip */ }
   try { feedbacks.value = await recommendationApi.myFeedback() } catch { /* skip */ }
   try { invites.value = await matchApi.listInvites() } catch (e) { console.warn('invites 加载失败:', e) }
+  try { myPosts.value = (await postApi.mine(0)).items } catch { /* skip */ }
+  try { myComments.value = await postApi.myComments() } catch { /* skip */ }
   loading.value = false
 }
 
@@ -51,6 +58,32 @@ async function doRevokeShare(id: number) {
   } catch (err) {
     error.value = (err as Error).message || '撤销失败'
   }
+}
+
+async function doDeletePost(id: number) {
+  if (!confirm('确认删除该帖子？')) return
+  try { await postApi.delete(id); myPosts.value = myPosts.value.filter(p => p.id !== id); notice.value = '帖子已删除' }
+  catch (err) { error.value = (err as Error).message || '删除失败' }
+}
+
+async function doDeleteComment(id: number) {
+  if (!confirm('确认删除该评论？')) return
+  try { await postApi.deleteOwnComment(id); myComments.value = myComments.value.filter(c => c.id !== id); notice.value = '评论已删除' }
+  catch (err) { error.value = (err as Error).message || '删除失败' }
+}
+
+function startEditPost(post: PostResponse) { editingPostId.value = post.id; editingCommentId.value = null; editText.value = post.content }
+function startEditComment(c: MyCommentResponse) { editingCommentId.value = c.id; editingPostId.value = null; editText.value = c.content }
+function cancelEdit() { editingPostId.value = null; editingCommentId.value = null; editText.value = '' }
+
+async function saveEditPost(id: number) {
+  try { await postApi.update(id, { content: editText.value, domainTag: '' }); myPosts.value = myPosts.value.map(p => p.id === id ? { ...p, content: editText.value } : p); cancelEdit(); notice.value = '帖子已更新' }
+  catch (err) { error.value = (err as Error).message || '更新失败' }
+}
+
+async function saveEditComment(id: number) {
+  try { await postApi.updateComment(id, editText.value); myComments.value = myComments.value.map(c => c.id === id ? { ...c, content: editText.value } : c); cancelEdit(); notice.value = '评论已更新' }
+  catch (err) { error.value = (err as Error).message || '更新失败' }
 }
 
 function logout() {
@@ -205,6 +238,87 @@ onMounted(load)
                 <td>{{ item.score }}%</td>
                 <td>{{ item.summary }}</td>
                 <td>{{ formatTime(item.createdAt) }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </article>
+    </section>
+
+    <section class="grid two section-gap profile-grid">
+      <!-- 我的帖子 -->
+      <article class="panel">
+        <h2>我的帖子</h2>
+        <EmptyState
+          v-if="!myPosts.length"
+          title="暂无帖子"
+          description="在社区发布的帖子会显示在这里。"
+          action-label="去社区"
+          action-to="/community"
+        />
+        <div v-else class="table-wrap">
+          <table>
+            <thead><tr><th>内容</th><th>领域</th><th>赞/评/收藏</th><th>时间</th><th>操作</th></tr></thead>
+            <tbody>
+              <tr v-for="p in myPosts" :key="p.id">
+                <td v-if="editingPostId === p.id" colspan="3">
+                  <textarea v-model="editText" class="field-input" rows="2" style="width:100%"></textarea>
+                </td>
+                <td v-else>
+                  <RouterLink :to="`/community/post/${p.id}`">{{ p.content.slice(0, 40) }}{{ p.content.length > 40 ? '...' : '' }}</RouterLink>
+                </td>
+                <td v-if="editingPostId !== p.id">{{ p.domainTag }}</td>
+                <td v-if="editingPostId !== p.id">{{ p.likeCount }} / {{ p.commentCount }} / {{ p.favoriteCount }}</td>
+                <td>{{ formatTime(p.createdAt) }}</td>
+                <td>
+                  <template v-if="editingPostId === p.id">
+                    <button class="primary small" type="button" @click="saveEditPost(p.id)">保存</button>
+                    <button class="ghost small" type="button" @click="cancelEdit()">取消</button>
+                  </template>
+                  <template v-else>
+                    <button class="secondary small" type="button" @click="startEditPost(p)">编辑</button>
+                    <button class="danger small" type="button" @click="doDeletePost(p.id)">删除</button>
+                  </template>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </article>
+
+      <!-- 我的评论 -->
+      <article class="panel">
+        <h2>我的评论</h2>
+        <EmptyState
+          v-if="!myComments.length"
+          title="暂无评论"
+          description="在社区发表的评论会显示在这里。"
+          action-label="去社区"
+          action-to="/community"
+        />
+        <div v-else class="table-wrap">
+          <table>
+            <thead><tr><th>评论内容</th><th>所属帖子</th><th>时间</th><th>操作</th></tr></thead>
+            <tbody>
+              <tr v-for="c in myComments" :key="c.id">
+                <td v-if="editingCommentId === c.id" colspan="2">
+                  <textarea v-model="editText" class="field-input" rows="2" style="width:100%"></textarea>
+                </td>
+                <td v-else>{{ c.content.slice(0, 40) }}{{ c.content.length > 40 ? '...' : '' }}</td>
+                <td v-if="editingCommentId !== c.id">
+                  <RouterLink :to="`/community/post/${c.postId}`">{{ c.postTitle }}</RouterLink>
+                </td>
+                <td>{{ formatTime(c.createdAt) }}</td>
+                <td>
+                  <template v-if="editingCommentId === c.id">
+                    <button class="primary small" type="button" @click="saveEditComment(c.id)">保存</button>
+                    <button class="ghost small" type="button" @click="cancelEdit()">取消</button>
+                  </template>
+                  <template v-else>
+                    <button class="secondary small" type="button" @click="startEditComment(c)">编辑</button>
+                    <button class="danger small" type="button" @click="doDeleteComment(c.id)">删除</button>
+                  </template>
+                </td>
               </tr>
             </tbody>
           </table>

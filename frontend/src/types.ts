@@ -164,6 +164,14 @@ export interface CommentResponse {
   createdAt: string
 }
 
+export interface MyCommentResponse {
+  id: number
+  content: string
+  postId: number
+  postTitle: string
+  createdAt: string
+}
+
 export interface CreatePostRequest {
   content: string
   domainTag: string

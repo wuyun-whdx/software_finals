@@ -1,7 +1,7 @@
 ﻿<script setup lang="ts">
 import { onMounted, ref, watch } from 'vue'
-import { useRouter, useRoute } from 'vue-router'
-import { UtensilsCrossed, MapPin, Users, Shirt, Briefcase, MessageSquare, Sparkles } from 'lucide-vue-next'
+import { useRoute } from 'vue-router'
+import { Sparkles } from 'lucide-vue-next'
 import EmptyState from '../components/common/EmptyState.vue'
 import LoadingState from '../components/common/LoadingState.vue'
 import PageContainer from '../components/common/PageContainer.vue'
@@ -9,8 +9,8 @@ import RegionSelector from '../components/RegionSelector.vue'
 import type { LocationRecommendation } from '../types'
 import { listRecommendations, submitFeedback } from '../services/recommendationService'
 import { getMyRegion } from '../services/regionService'
+import { postApi } from '../api'
 
-const router = useRouter()
 const route = useRoute()
 
 const tabs: Array<{ value: string; label: string }> = [
@@ -18,8 +18,7 @@ const tabs: Array<{ value: string; label: string }> = [
   { value: 'travel', label: '旅行' },
   { value: 'social', label: '社交' },
   { value: 'outfit', label: '穿搭' },
-  { value: 'career', label: '生涯' },
-  { value: 'community', label: '社区' }
+  { value: 'career', label: '生涯' }
 ]
 
 const active = ref('food')
@@ -32,10 +31,6 @@ const hasRegion = ref(false)
 const region = ref<{ province: string; city: string; district?: string } | null>(null)
 
 function switchTab(tab: string) {
-  if (tab === 'community') {
-    router.push('/community')
-    return
-  }
   active.value = tab
 }
 
@@ -74,7 +69,7 @@ function onRegionChanged() {
 
 async function feedback(item: LocationRecommendation, rating: string) {
   try {
-    await submitFeedback(item.id, rating)
+    await submitFeedback(item.id, rating, item.tags)
     submitted.value[item.id] = rating
     notice.value = rating === 'DISLIKE'
       ? '已收到反馈，后续会减少相似类型推荐。'
@@ -91,6 +86,38 @@ function feedbackLabel(rating: string) {
 
 function isAi(item: LocationRecommendation): boolean {
   return item.source === 'ai'
+}
+
+// ---- Share to community ----
+const shareItemId = ref<number | null>(null)
+const shareText = ref('')
+
+function sceneToDomain(scene: string): string {
+  return (scene || '').toUpperCase() || 'OTHER'
+}
+
+function openShare(item: LocationRecommendation) {
+  shareItemId.value = item.id
+  shareText.value = `【${item.title}】${item.description}\n\n#${item.tags?.join(' #') || ''}`
+}
+
+function cancelShare() {
+  shareItemId.value = null
+  shareText.value = ''
+}
+
+async function submitShare(item: LocationRecommendation) {
+  try {
+    await postApi.create({
+      content: shareText.value,
+      domainTag: sceneToDomain(item.scene)
+    })
+    shareItemId.value = null
+    shareText.value = ''
+    notice.value = '已发布到社区'
+  } catch (err) {
+    error.value = (err as Error).message || '发布失败'
+  }
 }
 
 watch(active, load)
@@ -168,6 +195,21 @@ onMounted(() => {
           <button class="primary" type="button" @click="feedback(item, 'LIKE')">喜欢</button>
           <button class="secondary" type="button" @click="feedback(item, 'NEUTRAL')">一般</button>
           <button class="ghost" type="button" @click="feedback(item, 'DISLIKE')">不喜欢</button>
+          <button class="ghost" type="button" @click="openShare(item)">分享</button>
+        </div>
+
+        <!-- Inline share form -->
+        <div v-if="shareItemId === item.id" class="share-form">
+          <textarea
+            v-model="shareText"
+            class="share-textarea"
+            rows="3"
+            placeholder="写点感想分享到社区..."
+          ></textarea>
+          <div class="share-actions">
+            <button class="primary small" type="button" @click="submitShare(item)">发布</button>
+            <button class="ghost small" type="button" @click="cancelShare()">取消</button>
+          </div>
         </div>
       </article>
     </section>
@@ -175,6 +217,32 @@ onMounted(() => {
 </template>
 
 <style scoped>
+/* ---- Share form ---- */
+.share-form {
+  margin-top: 12px;
+  border-top: 1px solid var(--line);
+  padding-top: 12px;
+}
+.share-textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font-size: 0.88rem;
+  font-family: inherit;
+  resize: vertical;
+  min-height: 64px;
+}
+.share-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+button.small {
+  padding: 4px 14px;
+  font-size: 0.82rem;
+}
+
 .address-line {
   font-size: 0.85rem;
   color: var(--muted);
@@ -185,21 +253,8 @@ onMounted(() => {
   font-size: 0.85rem;
   color: var(--notice-text);
   font-style: italic;
-  margin-top: 0.25rem;
-}
-
-.ai-tag-row {
-  margin-bottom: 4px;
-}
-
-.ai-tag-badge {
-  background: rgba(232, 180, 79, 0.12);
-  color: var(--signal);
-  font-weight: 800;
-}
-
-.ai-tag-icon {
-  vertical-align: middle;
-  margin-right: 2px;
+  margin-top: 0.5rem;
+  padding-top: 6px;
+  border-top: 1px dashed rgba(240, 224, 176, 0.5);
 }
 </style>

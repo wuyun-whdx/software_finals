@@ -93,7 +93,8 @@ public final class ApiDtos {
 
     public record FeedbackRequest(
             @NotBlank String rating,
-            @Size(max = 100) String comment) {
+            @Size(max = 100) String comment,
+            List<String> tags) {
     }
 
     public record MatchRequest(@NotBlank @Pattern(regexp = "^\\d{11}$") String friendPhone) {
@@ -257,10 +258,22 @@ public final class ApiDtos {
             @NotBlank String content) {
     }
 
+    public record UpdateCommentRequest(
+            @NotBlank String content) {
+    }
+
     public record CommentResponse(
             Long id,
             String content,
             UserProfileResponse user,
+            Instant createdAt) {
+    }
+
+    public record MyCommentResponse(
+            Long id,
+            String content,
+            Long postId,
+            String postTitle,
             Instant createdAt) {
     }
 

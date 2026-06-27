@@ -140,7 +140,7 @@ onMounted(load)
 
       <!-- Users + Rules -->
       <section class="grid two section-gap">
-        <article class="panel">
+        <article class="panel admin-panel">
           <h2>用户管理</h2>
           <EmptyState v-if="!users.length" title="暂无用户数据" description="用户注册后会显示在此列表中。" />
           <div v-else class="table-wrap">
@@ -162,7 +162,7 @@ onMounted(load)
           </div>
         </article>
 
-        <article class="panel">
+        <article class="panel admin-panel">
           <div class="split"><h2>推荐规则</h2><button class="primary small" type="button" @click="showRuleForm = true">+ 新建</button></div>
           <EmptyState v-if="!rules.length" title="暂无推荐规则" description="点击「新建」添加推荐权重规则。" />
           <div v-else class="table-wrap">
@@ -185,7 +185,7 @@ onMounted(load)
 
       <!-- Questions + Recommendations -->
       <section class="grid two section-gap">
-        <article class="panel">
+        <article class="panel admin-panel">
           <div class="split"><h2>题库管理</h2><button class="primary small" type="button" @click="openNewQuestion">+ 新建</button></div>
           <EmptyState v-if="!questions.length" title="暂无题目" description="点击「新建」添加题目" />
           <div v-else class="table-wrap">
@@ -205,7 +205,7 @@ onMounted(load)
           </div>
         </article>
 
-        <article class="panel">
+        <article class="panel admin-panel">
           <div class="split"><h2>推荐库管理</h2><button class="primary small" type="button" @click="openNewRec">+ 新建</button></div>
           <EmptyState v-if="!recommendations.length" title="暂无推荐项" description="点击「新建」添加推荐项" />
           <div v-else class="table-wrap">
@@ -228,7 +228,7 @@ onMounted(load)
 
       <!-- Feedback + Logs -->
       <section class="grid two section-gap">
-        <article class="panel">
+        <article class="panel admin-panel">
           <h2>最近反馈</h2>
           <EmptyState v-if="!feedbacks.length" title="暂无反馈数据" description="用户提交推荐反馈后会显示在这里。" />
           <div v-else class="table-wrap">
@@ -243,7 +243,7 @@ onMounted(load)
           </div>
         </article>
 
-        <article class="panel">
+        <article class="panel admin-panel">
           <h2>操作日志</h2>
           <EmptyState v-if="!logs.length" title="暂无日志" description="管理员操作记录会显示在这里。" />
           <div v-else class="table-wrap">
@@ -298,5 +298,21 @@ onMounted(load)
 .modal-action-bar {
   margin-top: 16px;
   justify-content: flex-end;
+}
+
+/* Uniform card height with vertical scroll */
+.admin-panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  max-height: 800px;
+}
+.admin-panel h2,
+.admin-panel .split {
+  flex-shrink: 0;
+}
+.admin-panel .table-wrap {
+  overflow: auto;
+  flex: 1;
 }
 </style>

@@ -93,7 +93,7 @@ export const recommendationApi = {
       params: { scene, ...(region || {}) },
       timeout: 30000 // AI recommendation may take longer
     })),
-  feedback: (id: number, payload: { rating: string; comment?: string }) =>
+  feedback: (id: number, payload: { rating: string; comment?: string; tags?: string[] }) =>
     dataOf<void>(api.post(`/recommendations/${id}/feedback`, payload)),
   myFeedback: () => dataOf<UserFeedback[]>(api.get('/recommendations/feedback/me'))
 }
@@ -149,6 +149,7 @@ export const postApi = {
   update: (id: number, payload: CreatePostRequest) => dataOf<PostResponse>(api.put(`/posts/${id}`, payload)),
   delete: (id: number) => dataOf<void>(api.delete(`/posts/${id}`)),
   mine: (page = 0) => dataOf<PostListResponse>(api.get('/posts/mine', { params: { page } })),
+  myComments: () => dataOf<import('./types').MyCommentResponse[]>(api.get('/posts/comments/mine')),
   like: (id: number) => dataOf<void>(api.post(`/posts/${id}/like`)),
   unlike: (id: number) => dataOf<void>(api.delete(`/posts/${id}/like`)),
   favorite: (id: number) => dataOf<void>(api.post(`/posts/${id}/favorite`)),
@@ -160,7 +161,11 @@ export const postApi = {
   listComments: (postId: number, page = 0) =>
     dataOf<CommentResponse[]>(api.get(`/posts/${postId}/comments`, { params: { page } })),
   deleteComment: (postId: number, commentId: number) =>
-    dataOf<void>(api.delete(`/posts/${postId}/comments/${commentId}`))
+    dataOf<void>(api.delete(`/posts/${postId}/comments/${commentId}`)),
+  updateComment: (commentId: number, content: string) =>
+    dataOf<void>(api.put(`/posts/comments/${commentId}`, { content })),
+  deleteOwnComment: (commentId: number) =>
+    dataOf<void>(api.delete(`/posts/comments/${commentId}`))
 }
 
 export const friendApi = {

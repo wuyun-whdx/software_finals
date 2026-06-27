@@ -13,6 +13,7 @@ const navItems = computed(() => [
   { path: '/tests/personality', label: '测试' },
   { path: '/report', label: '报告' },
   { path: '/recommendations', label: '推荐' },
+  { path: '/community', label: '社区' },
   { path: '/match', label: '匹配' },
   { path: '/profile', label: '我的' },
   ...(auth.isAdmin ? [{ path: '/admin', label: '后台', admin: true }] : [])

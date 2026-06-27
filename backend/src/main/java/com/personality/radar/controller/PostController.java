@@ -53,6 +53,23 @@ public class PostController {
         return ApiResponse.ok(postService.myPosts(currentUser.requireUser(), page));
     }
 
+    @GetMapping("/comments/mine")
+    public ApiResponse<List<ApiDtos.MyCommentResponse>> myComments(@RequestParam(defaultValue = "0") int page) {
+        return ApiResponse.ok(postService.myComments(currentUser.requireUser(), page));
+    }
+
+    @PutMapping("/comments/{commentId}")
+    public ApiResponse<Void> updateComment(@PathVariable Long commentId, @RequestBody ApiDtos.UpdateCommentRequest request) {
+        postService.updateComment(currentUser.requireUser(), commentId, request.content());
+        return ApiResponse.ok();
+    }
+
+    @DeleteMapping("/comments/{commentId}")
+    public ApiResponse<Void> deleteOwnComment(@PathVariable Long commentId) {
+        postService.deleteComment(currentUser.requireUser(), commentId);
+        return ApiResponse.ok();
+    }
+
     @PostMapping("/{id}/like")
     public ApiResponse<Void> like(@PathVariable Long id) {
         postService.like(currentUser.requireUser(), id);

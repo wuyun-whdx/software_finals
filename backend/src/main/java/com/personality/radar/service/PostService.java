@@ -129,11 +129,28 @@ public class PostService {
     @Transactional
     public void delete(UserAccount user, Long id) {
         Post post = posts.findById(id).orElseThrow(() -> new BusinessException(404, "帖子不存在"));
-        if (!post.getAuthor().getId().equals(user.getId())) {
+        boolean isAuthor = post.getAuthor().getId().equals(user.getId());
+        boolean isAdmin = user.getRole() == Role.ADMIN;
+        if (!isAuthor && !isAdmin) {
             throw new BusinessException(403, "只能删除自己的帖子");
         }
         post.setActive(false);
         posts.save(post);
+    }
+
+    @Transactional(readOnly = true)
+    public List<ApiDtos.MyCommentResponse> myComments(UserAccount user, int page) {
+        var pageable = PageRequest.of(page, 50);
+        return comments.findByUserAndActiveTrueOrderByCreatedAtDesc(user, pageable).stream()
+                .map(c -> {
+                    String postContent = c.getPost().getContent();
+                    String postTitle = postContent.length() > 40 ? postContent.substring(0, 40) + "..." : postContent;
+                    return new ApiDtos.MyCommentResponse(
+                            c.getId(), c.getContent(),
+                            c.getPost().getId(), postTitle,
+                            c.getCreatedAt());
+                })
+                .toList();
     }
 
     @Transactional(readOnly = true)
@@ -263,6 +280,17 @@ public class PostService {
                 .map(c -> new ApiDtos.CommentResponse(c.getId(), c.getContent(),
                         DtoMapper.user(c.getUser()), c.getCreatedAt()))
                 .toList();
+    }
+
+    @Transactional
+    public void updateComment(UserAccount user, Long commentId, String content) {
+        PostComment comment = comments.findById(commentId)
+                .orElseThrow(() -> new BusinessException(404, "评论不存在"));
+        if (!comment.getUser().getId().equals(user.getId())) {
+            throw new BusinessException(403, "只能修改自己的评论");
+        }
+        comment.setContent(content);
+        comments.save(comment);
     }
 
     @Transactional
