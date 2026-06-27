@@ -1,6 +1,6 @@
 ﻿<script setup lang="ts">
 import { onMounted, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { UtensilsCrossed, MapPin, Users, Shirt, Briefcase, MessageSquare, Sparkles } from 'lucide-vue-next'
 import EmptyState from '../components/common/EmptyState.vue'
 import LoadingState from '../components/common/LoadingState.vue'
@@ -11,6 +11,7 @@ import { listRecommendations, submitFeedback } from '../services/recommendationS
 import { getMyRegion } from '../services/regionService'
 
 const router = useRouter()
+const route = useRoute()
 
 const tabs: Array<{ value: string; label: string }> = [
   { value: 'food', label: '饮食' },
@@ -94,6 +95,10 @@ function isAi(item: LocationRecommendation): boolean {
 
 watch(active, load)
 onMounted(() => {
+  const tabParam = route.query.tab as string | undefined
+  if (tabParam && tabs.some(t => t.value === tabParam)) {
+    active.value = tabParam
+  }
   loadRegion()
   load()
 })

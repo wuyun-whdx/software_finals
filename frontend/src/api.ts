@@ -90,7 +90,8 @@ export const reportApi = {
 export const recommendationApi = {
   list: (scene: string, region?: RegionInfo) =>
     dataOf<LocationRecommendation[]>(api.get('/recommendations', {
-      params: { scene, ...(region || {}) }
+      params: { scene, ...(region || {}) },
+      timeout: 30000 // AI recommendation may take longer
     })),
   feedback: (id: number, payload: { rating: string; comment?: string }) =>
     dataOf<void>(api.post(`/recommendations/${id}/feedback`, payload)),

@@ -10,17 +10,30 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 
 @Component
 public class DeepSeekClient {
 
-    @Value("${ai.deepseek.api-key}")
+    @Value("${app.ai.deepseek.api-key:}")
     private String apiKey;
 
-    private final RestTemplate restTemplate =
-            new RestTemplate();
+    @Value("${app.ai.deepseek.base-url:https://api.deepseek.com}")
+    private String baseUrl;
+
+    @Value("${app.ai.deepseek.model:deepseek-chat}")
+    private String model;
+
+    private final RestTemplate restTemplate;
+
+    public DeepSeekClient() {
+        SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
+        factory.setConnectTimeout(5000);
+        factory.setReadTimeout(25000);
+        this.restTemplate = new RestTemplate(factory);
+    }
 
     private final ObjectMapper objectMapper =
             new ObjectMapper();
@@ -29,8 +42,7 @@ public class DeepSeekClient {
 
         try {
 
-            String url =
-                    "https://api.deepseek.com/chat/completions";
+            String url = baseUrl + "/chat/completions";
 
             HttpHeaders headers =
                     new HttpHeaders();
@@ -42,7 +54,7 @@ public class DeepSeekClient {
 
             Map<String, Object> body =
                     Map.of(
-                            "model", "deepseek-chat",
+                            "model", model,
                             "messages", List.of(
                                     Map.of(
                                             "role", "system",

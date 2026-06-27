@@ -1,11 +1,14 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import EmptyState from '../../components/common/EmptyState.vue'
 import LoadingState from '../../components/common/LoadingState.vue'
 import PageContainer from '../../components/common/PageContainer.vue'
 import PostCard from '../../components/community/PostCard.vue'
 import { postApi } from '../../api'
 import type { PostResponse } from '../../types'
+
+const router = useRouter()
 
 const sort = ref('recommend')
 const domain = ref('')
@@ -16,6 +19,20 @@ const error = ref('')
 const domains = ['', 'FOOD', 'TRAVEL', 'SOCIAL', 'OUTFIT', 'CAREER', 'OTHER']
 const domainLabels: Record<string, string> = {
   '': '全部领域', FOOD: '饮食', TRAVEL: '旅行', SOCIAL: '社交', OUTFIT: '穿搭', CAREER: '生涯', OTHER: '其他'
+}
+
+const tabs = [
+  { value: 'food', label: '饮食' },
+  { value: 'travel', label: '旅行' },
+  { value: 'social', label: '社交' },
+  { value: 'outfit', label: '穿搭' },
+  { value: 'career', label: '生涯' },
+  { value: 'community', label: '社区' }
+]
+
+function switchTab(tab: string) {
+  if (tab === 'community') return
+  router.push({ path: '/recommendations', query: { tab } })
 }
 
 async function load() {
@@ -39,6 +56,18 @@ onMounted(load)
     <template #actions>
       <RouterLink class="button" to="/community/create">发布动态</RouterLink>
     </template>
+
+    <!-- Unified 6-tab navigation bar -->
+    <div class="segmented community-tabs-bar">
+      <button
+        v-for="tab in tabs"
+        :key="tab.value"
+        :class="{ active: tab.value === 'community' }"
+        @click="switchTab(tab.value)"
+      >
+        {{ tab.label }}
+      </button>
+    </div>
 
     <div v-if="error" class="error">{{ error }}</div>
 
@@ -80,3 +109,9 @@ onMounted(load)
     </section>
   </PageContainer>
 </template>
+
+<style scoped>
+.community-tabs-bar {
+  margin-bottom: 16px;
+}
+</style>

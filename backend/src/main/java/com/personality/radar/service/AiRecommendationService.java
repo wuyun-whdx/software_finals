@@ -28,6 +28,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -62,7 +63,7 @@ public class AiRecommendationService {
     public AiRecommendationService(
             AiRecommendationProvider provider,
             AiProfileAssembler profileAssembler,
-            RecommendationService recommendationService,
+            @Lazy RecommendationService recommendationService,
             AiRecommendationRecordRepository records,
             AiRecommendationFeedbackRepository feedbacks,
             StringRedisTemplate redis,
@@ -147,13 +148,13 @@ public class AiRecommendationService {
                     (long) -(i + 1),
                     sceneValue,
                     item.name(),
-                    item.reason(),
+                    item.category(),       // short category as description
                     item.tags() == null ? List.of() : item.tags(),
                     score,
                     null,
                     true,
                     item.address(),
-                    item.reason(),
+                    item.reason(),         // full personalized reason
                     "ai"));
         }
         return mapped;

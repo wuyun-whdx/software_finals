@@ -62,7 +62,7 @@ public class RecommendationService {
                 .toList();
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public List<ApiDtos.LocationRecommendationResponse> recommendWithRegion(
             UserAccount user, String sceneValue,
             String province, String city, String district) {
